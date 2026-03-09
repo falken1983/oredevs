@@ -7,8 +7,8 @@ Unit tests for HullWhiteCalibrator.
 import unittest
 import QuantLib as ql
 
-from arc.market_data import get_eur_yield_curve_handle, get_caplet_vol_handle
-from arc.hull_white_calibrator import HullWhiteCalibrator
+from src.market_data import get_eur_yield_curve_handle, get_caplet_vol_handle
+from src.hull_white_calibrator import HullWhiteCalibrator
 
 
 class TestHullWhiteCalibrator(unittest.TestCase):
@@ -21,7 +21,8 @@ class TestHullWhiteCalibrator(unittest.TestCase):
         ql.Settings.instance().evaluationDate = cls.today
 
         cls.yield_curve = get_eur_yield_curve_handle(rate=0.03)
-        cls.caplet_vols = get_caplet_vol_handle(vol=0.20)
+        # Normal (Bachelier) vol: 60 bps
+        cls.caplet_vols = get_caplet_vol_handle(vol=0.0060)
 
     def _make_calibrator(self) -> HullWhiteCalibrator:
         return HullWhiteCalibrator(self.yield_curve, self.caplet_vols)
@@ -63,14 +64,16 @@ class TestHullWhiteCalibrator(unittest.TestCase):
         self.assertGreater(discount, 0.0)
         self.assertLess(discount, 1.0)
 
-    def test_market_data_vol_handle_is_handle(self) -> None:
-        handle = get_caplet_vol_handle(vol=0.20)
+    def test_market_data_vol_handle_is_normal(self) -> None:
+        handle = get_caplet_vol_handle(vol=0.0060)
         self.assertIsInstance(handle, ql.OptionletVolatilityStructureHandle)
-        # Verify the surface is usable by reading back the flat vol
+        # Verify the surface returns the correct Normal vol value (60 bps)
         vol = handle.currentLink().volatility(
             ql.Date(9, ql.March, 2027), 0.03, True
         )
-        self.assertAlmostEqual(vol, 0.20, places=6)
+        self.assertAlmostEqual(vol, 0.0060, places=6)
+        # Normal vols are small absolute values (bps range), not percentages
+        self.assertLess(vol, 0.05)
 
 
 if __name__ == "__main__":

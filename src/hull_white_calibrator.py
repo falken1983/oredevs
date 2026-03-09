@@ -4,6 +4,11 @@ hull_white_calibrator.py
 Calibrates a Hull-White 1-factor model to caplet/cap market data using
 QuantLib.
 
+Market volatilities are quoted in Black Normal (Bachelier) convention, which
+is the standard for EUR caplets. CapHelper and the vol surface are both
+configured with ql.Normal so that model and market prices are computed
+consistently.
+
 The standard approach is:
   - Fix the mean-reversion speed ``a`` (or pass it in).
   - Optimise the volatility parameter ``sigma`` to reproduce observed
@@ -17,18 +22,19 @@ class HullWhiteCalibrator:
     """
     Calibrate a Hull-White 1-factor short-rate model to cap/caplet data.
 
+    Market cap volatilities must be in Black Normal (Bachelier) convention.
+
     Parameters
     ----------
     yield_curve_handle : ql.YieldTermStructureHandle
         EUR discount curve used both for pricing and as the model's term
         structure.
     vol_handle : ql.OptionletVolatilityStructureHandle
-        Flat or surface caplet volatility structure.
+        Flat or surface caplet volatility structure (Normal/Bachelier).
     """
 
     _CAP_TENORS = ["1Y", "2Y", "3Y", "4Y", "5Y", "7Y", "10Y"]
     _DAY_COUNT = ql.Actual365Fixed()
-    _IBOR_TENOR = ql.Period(6, ql.Months)
 
     def __init__(
         self,
@@ -48,7 +54,8 @@ class HullWhiteCalibrator:
 
         The mean-reversion parameter ``a`` is fixed to *mean_reversion*.
         The volatility ``sigma`` is optimised to minimise the squared
-        difference between model and market cap prices.
+        difference between model and market cap prices using the Black
+        Normal (Bachelier) vol convention.
 
         Parameters
         ----------
@@ -60,7 +67,7 @@ class HullWhiteCalibrator:
         dict with keys:
             ``a``      – calibrated (fixed) mean-reversion speed
             ``sigma``  – calibrated short-rate volatility
-            ``error``  – root-mean-square calibration error in vol units
+            ``error``  – root-mean-square calibration error in price units
         """
         model = ql.HullWhite(self._yield_curve)
 
@@ -101,7 +108,7 @@ class HullWhiteCalibrator:
     # ------------------------------------------------------------------
 
     def _build_helpers(self, model: ql.HullWhite) -> list:
-        """Build CapHelper objects for each cap tenor."""
+        """Build CapHelper objects (Normal/Bachelier vol) for each cap tenor."""
         calendar = ql.TARGET()
         settlement_date = ql.Settings.instance().evaluationDate
         helpers = []
@@ -111,6 +118,7 @@ class HullWhiteCalibrator:
             expiry_date = calendar.advance(
                 settlement_date, tenor, ql.ModifiedFollowing
             )
+            # Read Normal (Bachelier) vol from the surface
             atm_vol = self._vol_handle.currentLink().volatility(
                 expiry_date, 0.03, True
             )
@@ -118,6 +126,7 @@ class HullWhiteCalibrator:
 
             ibor_index = ql.Euribor6M(self._yield_curve)
 
+            # ql.Normal ensures market price is computed via Bachelier formula
             helper = ql.CapHelper(
                 tenor,
                 vol_quote,
@@ -127,6 +136,7 @@ class HullWhiteCalibrator:
                 True,  # include first caplet
                 self._yield_curve,
                 ql.CapHelper.RelativePriceError,
+                ql.Normal,  # Black Normal (Bachelier) convention
             )
             engine = ql.AnalyticCapFloorEngine(model, self._yield_curve)
             helper.setPricingEngine(engine)

@@ -3,7 +3,7 @@ market_data.py
 --------------
 Provides sample EUR market data for Hull-White calibration:
   - EUR discount curve (flat at ~3%)
-  - Caplet (optionlet) volatilities (flat at ~20%)
+  - Caplet (optionlet) volatilities — Black Normal (Bachelier), flat at ~60 bps
 """
 
 import QuantLib as ql
@@ -52,19 +52,22 @@ def get_eur_yield_curve_handle(
 
 
 def get_caplet_vol_handle(
-    vol: float = 0.20,
+    vol: float = 0.0060,
     day_count: ql.DayCounter = None,
     calendar: ql.Calendar = None,
     settlement_date: ql.Date = None,
 ) -> ql.OptionletVolatilityStructureHandle:
     """
     Return a QuantLib OptionletVolatilityStructureHandle backed by a flat
-    constant volatility surface.
+    Black Normal (Bachelier) constant volatility surface.
+
+    Volatilities are expressed in absolute rate terms (e.g. 0.0060 = 60 bps),
+    as is standard for EUR caplets quoted in the Normal convention.
 
     Parameters
     ----------
     vol : float
-        Flat normal / lognormal caplet vol (default 20 %).
+        Flat Normal (Bachelier) caplet vol in rate units (default 60 bps).
     day_count : ql.DayCounter
         Day-count convention (default Actual/365 Fixed).
     calendar : ql.Calendar
@@ -89,5 +92,6 @@ def get_caplet_vol_handle(
         ql.ModifiedFollowing,
         ql.QuoteHandle(ql.SimpleQuote(vol)),
         day_count,
+        ql.Normal,  # Black Normal (Bachelier) convention
     )
     return ql.OptionletVolatilityStructureHandle(constant_vol)

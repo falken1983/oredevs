@@ -5,15 +5,15 @@ Entry point for the Hull-White model calibration.
 
 Usage
 -----
-    python -m arc.main
+    python -m src.main
 or
-    python arc/main.py
+    python src/main.py
 """
 
 import QuantLib as ql
 
-from arc.market_data import get_eur_yield_curve_handle, get_caplet_vol_handle
-from arc.hull_white_calibrator import HullWhiteCalibrator
+from src.market_data import get_eur_yield_curve_handle, get_caplet_vol_handle
+from src.hull_white_calibrator import HullWhiteCalibrator
 
 
 def main() -> None:
@@ -28,9 +28,9 @@ def main() -> None:
     # 2. Load market data
     # ---------------------------------------------------------------
     yield_curve = get_eur_yield_curve_handle(rate=0.03)
-    caplet_vols = get_caplet_vol_handle(vol=0.20)
-    print("EUR yield curve  : flat 3 %")
-    print("Caplet flat vol  : 20 %")
+    caplet_vols = get_caplet_vol_handle(vol=0.0060)
+    print("EUR yield curve       : flat 3 %")
+    print("Caplet Normal vol     : 60 bps (Black Normal / Bachelier)")
 
     # ---------------------------------------------------------------
     # 3. Calibrate
